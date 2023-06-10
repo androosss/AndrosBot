@@ -11,6 +11,8 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -285,10 +287,15 @@ func downloadAudio(s *discordgo.Session, guildId string) {
 
 			format := strings.Split(strings.Split(formats[0].MimeType, ";")[0], "/")[1]
 
-			name := `.\assets\guild_` + guildId + `\audio` + fmt.Sprint(fileNr) + "." + format
-			output := `.\assets\guild_` + guildId + `\audio` + fmt.Sprint(fileNr) + ".opus"
+			name := `./assets/guild_` + guildId + `/audio` + fmt.Sprint(fileNr) + "." + format
+			output := `./assets/guild_` + guildId + `/audio` + fmt.Sprint(fileNr) + ".opus"
 			fileNr = (fileNr + 1) % 10
 
+			err = os.MkdirAll(path.Dir(name), 0770)
+			if err != nil {
+				fmt.Println("couldn't create dirs ", err.Error())
+				continue
+			}
 			file, err := os.Create(name)
 			if err != nil {
 				fmt.Println("couldn't create file ", err.Error())
@@ -464,6 +471,16 @@ outer:
 			isBusyMap.Save(guildId, false)
 			if len(playMap.Get(guildId)) == 0 {
 				disconnectInGuild(s, guildId)
+			}
+			files, err := filepath.Glob(strings.TrimSuffix(req.FilePath, ".opus") + `\.*`)
+			if err != nil {
+				fmt.Println("can't find files to delete ", err.Error())
+				break
+			}
+			for _, f := range files {
+				if err := os.Remove(f); err != nil {
+					fmt.Println("can't delete files ", err.Error())
+				}
 			}
 		}
 	}
