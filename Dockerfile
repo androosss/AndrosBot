@@ -1,16 +1,18 @@
-FROM golang:1.20-bullseye
+FROM golang:1.20-alpine
 
 WORKDIR /app
-RUN apt update
-RUN apt -y install ffmpeg
-RUN apt-get -y install libopus-dev libopusfile-dev
+RUN apk update
+RUN apk add musl-dev
+RUN apk add gcc
+RUN apk add ffmpeg
+RUN apk add opus-dev
 
 COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 
 COPY *.go ./
 
-RUN go build -o /andros_go
+RUN go build -o /andros_go -tags nolibopusfile
 
 EXPOSE 8080
 
