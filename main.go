@@ -85,6 +85,7 @@ func main() {
 	isBusyMap.Init()
 	dg.AddHandler(messageHandler)
 	dg.AddHandler(banHandler)
+	dg.AddHandler(voiceStateUpdateHandler)
 
 	dg.Identify.Intents = discordgo.IntentsAll
 
@@ -114,6 +115,12 @@ const (
 	youtubeApi   = "https://www.googleapis.com/youtube/v3/search"
 	youtubeQuery = "?type=video&maxResults=1&key=%s&q="
 )
+
+func voiceStateUpdateHandler(s *discordgo.Session, m *discordgo.VoiceStateUpdate) {
+	if m.ChannelID == "" && m.UserID == s.State.User.ID { // Bot disconnected from a voice channel
+		disconnectMap.Get(m.GuildID) <- ""
+	}
+}
 
 func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 	var err error
@@ -433,12 +440,11 @@ outer:
 								break diconnectEmpty
 							}
 						}
-						s.ChannelMessageSend(channelId, "Diskonektovanje")
+						if channelId != "" {
+							s.ChannelMessageSend(channelId, "Diskonektovanje")
+						}
 						continue outer
 					default:
-						if !isConnected(s, guildId) {
-							break
-						}
 						dataToSend := make([]byte, frameSize*channels*2)
 						bytesWritten, err := opusEncoder.Encode(buff, dataToSend)
 						if err != nil {
