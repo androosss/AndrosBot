@@ -199,7 +199,7 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 				s.ChannelMessageSend(m.ChannelID, "Moras da imas nesto za trazenje <:andros:807024966477676555>")
 				return
 			}
-			videoId, err := getVideoId(strings.Split(m.Content, " ")[1])
+			videoId, err := getVideoId(strings.SplitN(m.Content, " ", 2)[1])
 			if err != nil {
 				LogError(s, "can't find video id "+err.Error())
 				return
@@ -218,7 +218,7 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 				s.ChannelMessageSend(m.ChannelID, "Moras da imas nesto za trazenje <:andros:807024966477676555>")
 				return
 			}
-			videoId, err := getVideoId(strings.Split(m.Content, " ")[1])
+			videoId, err := getVideoId(strings.SplitN(m.Content, " ", 2)[1])
 			if err != nil {
 				LogError(s, "can't find video id "+err.Error())
 				return
