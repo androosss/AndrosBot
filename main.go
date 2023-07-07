@@ -128,7 +128,7 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 	var err error
 	defer func() {
 		if err != nil {
-			fmt.Println(err.Error())
+			LogError(s, err.Error())
 		}
 	}()
 	if m.Author.ID == s.State.User.ID {
@@ -195,13 +195,13 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 		switch m.Content[1] {
 		case 'p':
 			if len(m.Content) < 4 {
-				fmt.Println("no prompt supplied")
+				LogError(s, "no prompt supplied")
 				s.ChannelMessageSend(m.ChannelID, "Moras da imas nesto za trazenje <:andros:807024966477676555>")
 				return
 			}
-			videoId, err := getVideoId(m.Content[3:])
+			videoId, err := getVideoId(strings.Split(m.Content, " ")[1])
 			if err != nil {
-				fmt.Println("can't find video id ", err.Error())
+				LogError(s, "can't find video id "+err.Error())
 				return
 			}
 			downloadMap.Get(m.GuildID) <- DownloadRequest{
@@ -214,13 +214,13 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 			skipMap.Get(m.GuildID) <- m.ChannelID
 		case 'l':
 			if len(m.Content) < 4 {
-				fmt.Println("no prompt supplied")
+				LogError(s, "no prompt supplied")
 				s.ChannelMessageSend(m.ChannelID, "Moras da imas nesto za trazenje <:andros:807024966477676555>")
 				return
 			}
-			videoId, err := getVideoId(m.Content[3:])
+			videoId, err := getVideoId(strings.Split(m.Content, " ")[1])
 			if err != nil {
-				fmt.Println("can't find video id ", err.Error())
+				LogError(s, "can't find video id "+err.Error())
 				return
 			}
 			downloadMap.Get(m.GuildID) <- DownloadRequest{
@@ -239,7 +239,7 @@ func banHandler(s *discordgo.Session, b *discordgo.GuildBanAdd) {
 	var err error
 	defer func() {
 		if err != nil {
-			fmt.Println(err.Error())
+			LogError(s, err.Error())
 		}
 	}()
 	if b.User.ID != "258578799917006849" {
@@ -262,14 +262,14 @@ func downloadAudio(s *discordgo.Session, guildId string) {
 		select {
 		case req := <-downloadMap.Get(guildId):
 			if len(playMap.Get(guildId)) == cap(playMap.Get(guildId)) {
-				fmt.Println("queue is full")
+				LogError(s, "queue is full")
 				continue
 			}
 			client := youtube.Client{}
 
 			video, err := client.GetVideo(req.YoutubeId)
 			if err != nil {
-				fmt.Println("couldn't get video ", err.Error())
+				LogError(s, "couldn't get video "+err.Error())
 				s.ChannelMessageSend(req.ChannelId, "Ae iskopiraj link normalno <:andros:807024966477676555>")
 				continue
 			}
@@ -282,7 +282,7 @@ func downloadAudio(s *discordgo.Session, guildId string) {
 			}) // take video with best audio quality and least amount of memory
 			stream, _, err := client.GetStream(video, &formats[0])
 			if err != nil {
-				fmt.Println("couldn't get stream ", err.Error())
+				LogError(s, "couldn't get stream "+err.Error())
 			}
 
 			format := strings.Split(strings.Split(formats[0].MimeType, ";")[0], "/")[1]
@@ -293,25 +293,25 @@ func downloadAudio(s *discordgo.Session, guildId string) {
 
 			err = os.MkdirAll(path.Dir(name), 0770)
 			if err != nil {
-				fmt.Println("couldn't create dirs ", err.Error())
+				LogError(s, "couldn't create dirs "+err.Error())
 				continue
 			}
 			file, err := os.Create(name)
 			if err != nil {
-				fmt.Println("couldn't create file ", err.Error())
+				LogError(s, "couldn't create file "+err.Error())
 				continue
 			}
 
 			_, err = io.Copy(file, stream)
 			if err != nil {
-				fmt.Println("couldn't copy file ", err.Error())
+				LogError(s, "couldn't copy file "+err.Error())
 				file.Close()
 				continue
 			}
 			file.Close()
 			cmd := exec.Command("ffmpeg", "-y", "-i", name, "-f", "s16le", "-ar", "48000", "-ac", "2", output)
 			if err := cmd.Run(); err != nil {
-				fmt.Println("couldn't turn into .opus ", err.Error())
+				LogError(s, "couldn't turn into .opus "+err.Error())
 				continue
 			}
 
@@ -334,7 +334,7 @@ func downloadAudio(s *discordgo.Session, guildId string) {
 					},
 				})
 				if err != nil {
-					fmt.Println("can't send message " + err.Error())
+					LogError(s, "can't send message "+err.Error())
 				}
 			} else {
 				_, err := s.ChannelMessageSendComplex(req.ChannelId, &discordgo.MessageSend{
@@ -352,7 +352,7 @@ func downloadAudio(s *discordgo.Session, guildId string) {
 					},
 				})
 				if err != nil {
-					fmt.Println("can't send message " + err.Error())
+					LogError(s, "can't send message "+err.Error())
 				}
 			}
 			playMap.Get(guildId) <- PlayRequest{
@@ -390,7 +390,7 @@ outer:
 			buffer := [][]int16{}
 			audio, err := os.Open(req.FilePath)
 			if err != nil {
-				fmt.Println("can't open file ", err.Error())
+				LogError(s, "can't open file "+err.Error())
 				continue
 			}
 
@@ -403,7 +403,7 @@ outer:
 				if err == io.EOF || err == io.ErrUnexpectedEOF {
 					err := audio.Close()
 					if err != nil {
-						fmt.Println("can't close file ", err.Error())
+						LogError(s, "can't close file "+err.Error())
 						continue outer
 					}
 					break
@@ -411,7 +411,7 @@ outer:
 
 				// Should not be any end of file errors
 				if err != nil {
-					fmt.Println("Error reading from opus file :", err)
+					LogError(s, "Error reading from opus file :"+err.Error())
 					continue outer
 				}
 
@@ -421,7 +421,7 @@ outer:
 
 			activeVC, err := connectToUserChannel(s, guildId, req.UserId)
 			if err != nil {
-				fmt.Println("can't connect to voice ", err.Error())
+				LogError(s, "can't connect to voice "+err.Error())
 				continue
 			}
 
@@ -455,7 +455,7 @@ outer:
 						dataToSend := make([]byte, frameSize*channels*2)
 						bytesWritten, err := opusEncoder.Encode(buff, dataToSend)
 						if err != nil {
-							fmt.Println("can't encode data ", err.Error())
+							LogError(s, "can't encode data "+err.Error())
 							break
 						}
 						activeVC.OpusSend <- dataToSend[:bytesWritten]
@@ -474,12 +474,12 @@ outer:
 			}
 			files, err := filepath.Glob(strings.TrimSuffix(req.FilePath, ".opus") + `\.*`)
 			if err != nil {
-				fmt.Println("can't find files to delete ", err.Error())
+				LogError(s, "can't find files to delete "+err.Error())
 				break
 			}
 			for _, f := range files {
 				if err := os.Remove(f); err != nil {
-					fmt.Println("can't delete files ", err.Error())
+					LogError(s, "can't delete files "+err.Error())
 				}
 			}
 		}
@@ -524,7 +524,7 @@ func disconnectInGuild(s *discordgo.Session, guildId string) {
 	if vc != nil {
 		err := vc.Disconnect()
 		if err != nil {
-			fmt.Println("error disconnecting " + err.Error())
+			LogError(s, "error disconnecting "+err.Error())
 		}
 	}
 }
@@ -587,4 +587,17 @@ func isConnected(s *discordgo.Session, guildId string) bool {
 	}
 
 	return false
+}
+
+func LogError(s *discordgo.Session, message string) {
+	fmt.Println(message)
+	ch, err := s.UserChannelCreate("258578799917006849")
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	_, err = s.ChannelMessageSend(ch.ID, message)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
 }
