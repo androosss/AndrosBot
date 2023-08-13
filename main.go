@@ -310,8 +310,8 @@ func downloadAudio(s *discordgo.Session, guildId string) {
 			}
 			file.Close()
 			cmd := exec.Command("ffmpeg", "-y", "-i", name, "-f", "s16le", "-ar", "48000", "-ac", "2", output)
-			if err := cmd.Run(); err != nil {
-				LogError(s, "couldn't turn into .opus "+err.Error())
+			if out, err := cmd.CombinedOutput(); err != nil {
+				LogError(s, "couldn't turn into .opus "+err.Error()+" output: "+string(out))
 				continue
 			}
 
