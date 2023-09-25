@@ -531,7 +531,7 @@ func disconnectInGuild(s *discordgo.Session, guildId string) {
 
 func getVideoId(content string) (videoId string, err error) {
 	if _, id, found := strings.Cut(content, "youtube.com/watch?v="); found {
-		videoId = id
+		videoId = strings.Split(id, "?")[0]
 	} else {
 		var req *http.Request
 		var resp *http.Response
